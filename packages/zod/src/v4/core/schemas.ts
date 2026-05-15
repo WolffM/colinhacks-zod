@@ -21,7 +21,7 @@ export interface ParseContext<T extends errors.$ZodIssueBase = never> {
   /** Skip eval-based fast path. Default `false`. */
   readonly jitless?: boolean;
   /** Abort validation after the first error. Default `false`. */
-  // readonly abortEarly?: boolean;
+  readonly abortEarly?: boolean;
 }
 
 /** @internal */
@@ -242,12 +242,12 @@ export const $ZodType: core.$constructor<$ZodType> = /*@__PURE__*/ core.$constru
             await _;
             const nextLen = payload.issues.length;
             if (nextLen === currLen) return;
-            if (!isAborted) isAborted = util.aborted(payload, currLen);
+            if (!isAborted) isAborted = ctx?.abortEarly || util.aborted(payload, currLen);
           });
         } else {
           const nextLen = payload.issues.length;
           if (nextLen === currLen) continue;
-          if (!isAborted) isAborted = util.aborted(payload, currLen);
+          if (!isAborted) isAborted = ctx?.abortEarly || util.aborted(payload, currLen);
         }
       }
 
@@ -1667,6 +1667,7 @@ export const $ZodArray: core.$constructor<$ZodArray> = /*@__PURE__*/ core.$const
         proms.push(result.then((result) => handleArrayResult(result, payload, i)));
       } else {
         handleArrayResult(result, payload, i);
+        if (ctx?.abortEarly && util.aborted(payload)) break;
       }
     }
 
@@ -1882,6 +1883,7 @@ function handleCatchall(
       proms.push(r.then((r) => handlePropertyResult(r, payload, key, input, isOptionalIn, isOptionalOut)));
     } else {
       handlePropertyResult(r, payload, key, input, isOptionalIn, isOptionalOut);
+      if (ctx?.abortEarly && util.aborted(payload)) break;
     }
   }
 
@@ -1967,6 +1969,7 @@ export const $ZodObject: core.$constructor<$ZodObject> = /*@__PURE__*/ core.$con
         proms.push(r.then((r) => handlePropertyResult(r, payload, key, input, isOptionalIn, isOptionalOut)));
       } else {
         handlePropertyResult(r, payload, key, input, isOptionalIn, isOptionalOut);
+        if (ctx?.abortEarly && util.aborted(payload)) break;
       }
     }
 
@@ -1974,6 +1977,9 @@ export const $ZodObject: core.$constructor<$ZodObject> = /*@__PURE__*/ core.$con
       return proms.length ? Promise.all(proms).then(() => payload) : payload;
     }
 
+    if (ctx?.abortEarly && util.aborted(payload)) {
+      return payload;
+    }
     return handleCatchall(proms, input, payload, ctx, _normalized.value, inst);
   };
 });
@@ -2114,7 +2120,8 @@ export const $ZodObjectJIT: core.$constructor<$ZodObject> = /*@__PURE__*/ core.$
         return payload;
       }
 
-      if (jit && fastEnabled && ctx?.async === false && ctx.jitless !== true) {
+      const shouldUseFastpass = jit && fastEnabled && ctx?.async === false && ctx.jitless !== true && !ctx?.abortEarly;
+      if (shouldUseFastpass) {
         // always synchronous
         if (!fastpass) fastpass = generateFastpass(def.shape);
         payload = fastpass(payload, ctx);
@@ -2911,6 +2918,7 @@ export const $ZodRecord: core.$constructor<$ZodRecord> = /*@__PURE__*/ core.$con
               path: [key],
               inst,
             });
+            if (ctx?.abortEarly) break;
             continue;
           }
           const outKey = keyResult.value as PropertyKey;
@@ -2928,6 +2936,7 @@ export const $ZodRecord: core.$constructor<$ZodRecord> = /*@__PURE__*/ core.$con
           } else {
             if (result.issues.length) {
               payload.issues.push(...util.prefixIssues(key, result.issues));
+              if (ctx?.abortEarly) break;
             }
             payload.value[outKey] = result.value;
           }
@@ -2988,6 +2997,7 @@ export const $ZodRecord: core.$constructor<$ZodRecord> = /*@__PURE__*/ core.$con
               path: [key],
               inst,
             });
+            if (ctx?.abortEarly) break;
           }
           continue;
         }
@@ -3006,6 +3016,7 @@ export const $ZodRecord: core.$constructor<$ZodRecord> = /*@__PURE__*/ core.$con
         } else {
           if (result.issues.length) {
             payload.issues.push(...util.prefixIssues(key, result.issues));
+            if (ctx?.abortEarly) break;
           }
           payload.value[keyResult.value as PropertyKey] = result.value;
         }
