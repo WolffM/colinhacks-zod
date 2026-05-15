@@ -242,12 +242,12 @@ export const $ZodType: core.$constructor<$ZodType> = /*@__PURE__*/ core.$constru
             await _;
             const nextLen = payload.issues.length;
             if (nextLen === currLen) return;
-            if (!isAborted) isAborted = ctx?.abortEarly === true || util.aborted(payload, currLen);
+            if (!isAborted) isAborted = ctx?.abortEarly || util.aborted(payload, currLen);
           });
         } else {
           const nextLen = payload.issues.length;
           if (nextLen === currLen) continue;
-          if (!isAborted) isAborted = ctx?.abortEarly === true || util.aborted(payload, currLen);
+          if (!isAborted) isAborted = ctx?.abortEarly || util.aborted(payload, currLen);
         }
       }
 
@@ -2120,7 +2120,8 @@ export const $ZodObjectJIT: core.$constructor<$ZodObject> = /*@__PURE__*/ core.$
         return payload;
       }
 
-      if (jit && fastEnabled && ctx?.async === false && ctx.jitless !== true && ctx.abortEarly !== true) {
+      const shouldUseFastpass = jit && fastEnabled && ctx?.async === false && ctx.jitless !== true && !ctx?.abortEarly;
+      if (shouldUseFastpass) {
         // always synchronous
         if (!fastpass) fastpass = generateFastpass(def.shape);
         payload = fastpass(payload, ctx);

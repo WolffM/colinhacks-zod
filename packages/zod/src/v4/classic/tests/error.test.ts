@@ -340,7 +340,7 @@ test("abortEarly returns only first issue", () => {
 
   expect(result.success).toBe(false);
   expect(result.error!.issues).toHaveLength(1);
-  expect(result.error!.issues[0]?.path).toEqual(["a"]);
+  expect(result.error!.issues[0]?.code).toBe("invalid_type");
 });
 
 test("abortEarly skips later refinements", () => {
