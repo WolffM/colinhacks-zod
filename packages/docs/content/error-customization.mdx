@@ -253,6 +253,21 @@ z.string().parse(12, {
 // ]
 ```
 
+### Abort after the first issue
+
+By default, Zod keeps validating to collect additional continuable issues. To stop after the first issue, pass `abortEarly: true` to `parse`, `safeParse`, and related methods:
+
+```ts
+const result = z.object({
+  name: z.string(),
+  age: z.number(),
+}).safeParse({ name: 42, age: "invalid" }, { abortEarly: true });
+
+if (!result.success) {
+  result.error.issues.length; // 1
+}
+```
+
 ## Global error customization
 
 To specify a global error map, use `z.config()` to set Zod's `customError` configuration setting:

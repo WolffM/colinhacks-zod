@@ -20,7 +20,8 @@ export const _parse: (_Err: $ZodErrorClass) => $Parse = (_Err) => (schema, value
     throw new core.$ZodAsyncError();
   }
   if (result.issues.length) {
-    const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+    const issues = ctx.abortEarly ? result.issues.slice(0, 1) : result.issues;
+    const e = new (_params?.Err ?? _Err)(issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
     util.captureStackTrace(e, _params?.callee);
     throw e;
   }
@@ -41,7 +42,8 @@ export const _parseAsync: (_Err: $ZodErrorClass) => $ParseAsync = (_Err) => asyn
   let result = schema._zod.run({ value, issues: [] }, ctx);
   if (result instanceof Promise) result = await result;
   if (result.issues.length) {
-    const e = new (params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+    const issues = ctx.abortEarly ? result.issues.slice(0, 1) : result.issues;
+    const e = new (params?.Err ?? _Err)(issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
     util.captureStackTrace(e, params?.callee);
     throw e;
   }
@@ -66,7 +68,11 @@ export const _safeParse: (_Err: $ZodErrorClass) => $SafeParse = (_Err) => (schem
   return result.issues.length
     ? {
         success: false,
-        error: new (_Err ?? errors.$ZodError)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config()))),
+        error: new (_Err ?? errors.$ZodError)(
+          (ctx.abortEarly ? result.issues.slice(0, 1) : result.issues).map((iss) =>
+            util.finalizeIssue(iss, ctx, core.config())
+          )
+        ),
       }
     : ({ success: true, data: result.value } as any);
 };
@@ -86,7 +92,11 @@ export const _safeParseAsync: (_Err: $ZodErrorClass) => $SafeParseAsync = (_Err)
   return result.issues.length
     ? {
         success: false,
-        error: new _Err(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config()))),
+        error: new _Err(
+          (ctx.abortEarly ? result.issues.slice(0, 1) : result.issues).map((iss) =>
+            util.finalizeIssue(iss, ctx, core.config())
+          )
+        ),
       }
     : ({ success: true, data: result.value } as any);
 };

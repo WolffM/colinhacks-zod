@@ -330,6 +330,40 @@ test("no abort early on refinements", () => {
   expect(result1.error!.issues.length).toEqual(2);
 });
 
+test("abortEarly returns only first issue", () => {
+  const result = z
+    .object({
+      a: z.string(),
+      b: z.string(),
+    })
+    .safeParse({ a: 123, b: 456 }, { abortEarly: true });
+
+  expect(result.success).toBe(false);
+  expect(result.error!.issues).toHaveLength(1);
+  expect(result.error!.issues[0]?.path).toEqual(["a"]);
+});
+
+test("abortEarly skips later refinements", () => {
+  let calls = 0;
+  const schema = z
+    .string()
+    .refine(() => false, { message: "first failure" })
+    .refine(
+      () => {
+        calls++;
+        return false;
+      },
+      { message: "second failure" }
+    );
+
+  const result = schema.safeParse("value", { abortEarly: true });
+
+  expect(result.success).toBe(false);
+  expect(result.error!.issues).toHaveLength(1);
+  expect(result.error!.issues[0]?.message).toBe("first failure");
+  expect(calls).toBe(0);
+});
+
 test("detect issue with input fallback", () => {
   const schema = z
     .string()
